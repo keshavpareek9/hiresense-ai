@@ -47,13 +47,25 @@ export default function Home() {
 
       const data = await res.json();
 
-      setAnalysis({
+     if (!data.analysis) {
+  throw new Error("Invalid analysis response from server");
+}
+
+setAnalysis({
   match_score: data.analysis.match_score ?? 0,
-  strengths: data.analysis.strengths ?? [],
-  gaps: data.analysis.gaps ?? [],
-  improvement_suggestions:
-    data.analysis.improvement_suggestions ?? [],
+  strengths: Array.isArray(data.analysis.strengths)
+    ? data.analysis.strengths
+    : [],
+  gaps: Array.isArray(data.analysis.gaps)
+    ? data.analysis.gaps
+    : [],
+  improvement_suggestions: Array.isArray(
+    data.analysis.improvement_suggestions
+  )
+    ? data.analysis.improvement_suggestions
+    : [],
 });
+
 
     } catch (err: any) {
       setError(err.message || "Something went wrong");
