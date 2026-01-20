@@ -14,17 +14,16 @@ Responsibilities:
 # Environment Setup
 # =========================
 from dotenv import load_dotenv
-load_dotenv()  # Load API keys from .env
+load_dotenv()
 
 # =========================
 # Core Imports
 # =========================
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import json
 
-from fastapi import UploadFile, File, Form
 from lib.pdf_utils import extract_text_from_pdf
 
 # =========================
@@ -35,119 +34,81 @@ from agents.job_agent import job_agent
 from agents.match_agent import match_agent
 
 # =========================
-# Request Models
-# =========================
-from models.analyze_request import AnalyzeRequest
-
-# =========================
 # App Initialization
 # =========================
 app = FastAPI(title="HireSense AI Service")
 
 # =========================
 # CORS Configuration
-# IMPORTANT: Required for browser → backend calls
 # =========================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # Allow all origins (OK for dev)
+    allow_origins=["*"],
     allow_credentials=False,
-    allow_methods=["*"],          # Allow GET, POST, OPTIONS, etc.
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # =========================
-# Logging Setup
+# Logging
 # =========================
 logging.basicConfig(level=logging.INFO)
 
 # =========================
-# Health Check Endpoint
+# Health Check
 # =========================
 @app.get("/health")
 def health():
-    """
-    Simple health check for deployment & monitoring
-    """
     return {"status": "ok"}
 
 # =========================
-# OPTIONS Handler (CORS Preflight)
+# OPTIONS (CORS preflight)
 # =========================
 @app.options("/analyze")
 def analyze_options():
-    """
-    Explicitly handle browser preflight requests
-    """
     return Response(status_code=200)
 
 # =========================
-# GET Guard for /analyze
+# GET guard
 # =========================
 @app.get("/analyze")
 def analyze_get():
-    """
-    Prevent accidental GET access in browser
-    """
     return {
-        "message": "This endpoint requires POST. Use POST /analyze with resume_text and job_text."
+        "message": "This endpoint requires POST. Use POST /analyze."
     }
 
 # =========================
-# Deterministic Score Calculator
+# Deterministic Scoring
 # =========================
-import re
-
 def extract_skills(text: str) -> set[str]:
-    """
-    Extracts potential skills from text using simple heuristics.
-    Deterministic and field-agnostic.
-    """
     text = text.lower()
 
-    # Common skill patterns (expandable)
     skill_keywords = [
         "python", "java", "javascript", "typescript",
         "react", "angular", "vue",
-        "sql", "nosql", "postgresql", "mysql", "mongodb",
+        "sql", "postgresql", "mysql", "mongodb",
         "fastapi", "django", "flask",
         "aws", "azure", "gcp", "cloud",
         "docker", "kubernetes", "ci/cd",
-        "machine learning", "deep learning",
-        "data analysis", "pandas", "numpy",
-        "backend", "frontend", "fullstack",
-        "api", "microservices",
-        "ui", "ux",
-        "testing", "automation",
-        "scalable", "distributed",
+        "machine learning", "data analysis",
+        "backend", "frontend", "api",
         "git", "linux"
     ]
 
-    found = set()
-    for skill in skill_keywords:
-        if skill in text:
-            found.add(skill)
-
-    return found
+    return {s for s in skill_keywords if s in text}
 
 
 def calculate_score(resume: str, job: str) -> int:
-    """
-    Generic, deterministic scoring for any job role.
-    """
-
     resume_skills = extract_skills(resume)
     job_skills = extract_skills(job)
 
     if not job_skills:
-        return 50  # neutral fallback
+        return 50
 
     matched = resume_skills.intersection(job_skills)
+    raw = int((len(matched) / len(job_skills)) * 100)
 
-    raw_score = int((len(matched) / len(job_skills)) * 100)
-
-    # Normalize score
-    return round(raw_score / 5) * 5
+    return round(raw / 5) * 5
 
 
 # =========================
@@ -162,7 +123,7 @@ async def analyze(
     logging.info("Analyze request received")
 
     try:
-        # 1️⃣ Determine resume source
+        # 1️⃣ Resume source
         if resume_file:
             if not resume_file.filename.endswith(".pdf"):
                 return {"error": "Only PDF resumes are supported"}
@@ -189,21 +150,49 @@ JOB DESCRIPTION:
 {job_result.output}
 """
 
-        # 5️⃣ Match agent (LLM)
+        # 5️⃣ Match agent
         match_result = await match_agent.run(combined_input)
 
         # 6️⃣ Deterministic score
         score = calculate_score(resume_content, job_text)
 
-        analysis = json.loads(match_result.output)
-        analysis["match_score"] = score
+        # 7️⃣ Safe JSON parsing with fallback
+        try:
+            parsed_analysis = json.loads(match_result.output)
+        except Exception:
+            parsed_analysis = {
+                "strengths": [],
+                "gaps": [],
+                "improvement_suggestions": [],
+            }
+
+        analysis = {
+            "match_score": score,
+            "strengths": parsed_analysis.get("strengths", []),
+            "gaps": parsed_analysis.get("gaps", []),
+            "improvement_suggestions": parsed_analysis.get(
+                "improvement_suggestions", []
+            ),
+        }
 
         return {
             "resume": resume_result.output,
             "job": job_result.output,
-            "analysis": analysis,  # ✅ JSON object
+            "analysis": analysis,  # 🔒 ALWAYS PRESENT
         }
 
-    except Exception as e:
-        logging.error(f"Analysis failed: {e}")
-        return {"error": "Analysis failed. Please try again."}
+    except Exception as e:logging.error(f"Analysis failed: {e}")
+
+    return {
+        "resume": "",
+        "job": "",
+        "analysis": {
+            "match_score": 0,
+            "strengths": [],
+            "gaps": [],
+            "improvement_suggestions": [
+                "The analysis could not be completed. Please try again."
+            ],
+        },
+    }
+
