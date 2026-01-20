@@ -34,7 +34,8 @@ export default function Home() {
       }
 
       const API_URL =
-        process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+        process.env.NEXT_PUBLIC_API_URL ??
+        "http://127.0.0.1:8000";
 
       const res = await fetch(`${API_URL}/analyze`, {
         method: "POST",
@@ -42,33 +43,39 @@ export default function Home() {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to analyze resume");
+        throw new Error("Backend error while analyzing resume");
       }
 
       const data = await res.json();
 
-     if (!data.analysis) {
-  throw new Error("Invalid analysis response from server");
-}
+      // 🔒 HARD GUARANTEE: analysis must exist
+      if (!data || !data.analysis) {
+        throw new Error("Invalid analysis response from server");
+      }
 
-setAnalysis({
-  match_score: data.analysis.match_score ?? 0,
-  strengths: Array.isArray(data.analysis.strengths)
-    ? data.analysis.strengths
-    : [],
-  gaps: Array.isArray(data.analysis.gaps)
-    ? data.analysis.gaps
-    : [],
-  improvement_suggestions: Array.isArray(
-    data.analysis.improvement_suggestions
-  )
-    ? data.analysis.improvement_suggestions
-    : [],
-});
-
-
+      setAnalysis({
+        match_score:
+          typeof data.analysis.match_score === "number"
+            ? data.analysis.match_score
+            : 0,
+        strengths: Array.isArray(data.analysis.strengths)
+          ? data.analysis.strengths
+          : [],
+        gaps: Array.isArray(data.analysis.gaps)
+          ? data.analysis.gaps
+          : [],
+        improvement_suggestions: Array.isArray(
+          data.analysis.improvement_suggestions
+        )
+          ? data.analysis.improvement_suggestions
+          : [],
+      });
     } catch (err: any) {
-      setError(err.message || "Something went wrong");
+      console.error(err);
+      setError(
+        err?.message ||
+          "Something went wrong. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -78,7 +85,9 @@ setAnalysis({
     <main className="min-h-screen bg-gray-900 text-white">
       {/* Header */}
       <section className="py-14 text-center">
-        <h1 className="text-5xl font-extrabold">HireSense AI</h1>
+        <h1 className="text-5xl font-extrabold">
+          HireSense AI
+        </h1>
         <p className="mt-4 text-gray-300">
           AI-powered resume & job matching
         </p>
@@ -88,13 +97,17 @@ setAnalysis({
       <section className="max-w-6xl mx-auto px-6 pb-20 space-y-8">
         {/* Resume */}
         <div className="bg-gray-800 border border-gray-700 rounded-2xl p-6 space-y-4">
-          <h2 className="text-xl font-semibold">Resume</h2>
+          <h2 className="text-xl font-semibold">
+            Resume
+          </h2>
 
           <input
             type="file"
             accept=".pdf"
             onChange={(e) =>
-              setResumeFile(e.target.files?.[0] || null)
+              setResumeFile(
+                e.target.files?.[0] || null
+              )
             }
             className="block w-full text-sm text-gray-300"
           />
@@ -104,7 +117,9 @@ setAnalysis({
               className="w-full bg-gray-900 border border-gray-600 rounded-xl p-4 h-48"
               placeholder="Or paste resume text"
               value={resumeText}
-              onChange={(e) => setResumeText(e.target.value)}
+              onChange={(e) =>
+                setResumeText(e.target.value)
+              }
             />
           )}
 
@@ -124,7 +139,9 @@ setAnalysis({
             className="w-full bg-gray-900 border border-gray-600 rounded-xl p-4 h-48"
             placeholder="Paste job description"
             value={jobText}
-            onChange={(e) => setJobText(e.target.value)}
+            onChange={(e) =>
+              setJobText(e.target.value)
+            }
           />
         </div>
 
@@ -138,14 +155,18 @@ setAnalysis({
         </button>
 
         {error && (
-          <p className="text-red-400 text-center">{error}</p>
+          <p className="text-red-400 text-center">
+            {error}
+          </p>
         )}
 
         {/* Results */}
         {analysis && (
           <div className="space-y-8">
             <div className="bg-black border border-gray-700 rounded-2xl p-8 text-center">
-              <p className="text-gray-400">Match Score</p>
+              <p className="text-gray-400">
+                Match Score
+              </p>
               <p className="text-6xl font-extrabold">
                 {analysis.match_score}%
               </p>
@@ -162,7 +183,9 @@ setAnalysis({
               />
               <ResultCard
                 title="Suggestions"
-                items={analysis.improvement_suggestions}
+                items={
+                  analysis.improvement_suggestions
+                }
               />
             </div>
           </div>
