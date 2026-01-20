@@ -188,24 +188,28 @@ async def analyze(
 
         # 4️⃣ Combine outputs for match agent
         combined_input = f"""
-        RESUME:
-        {resume_result.output}
+RESUME:
+{resume_result.output}
 
-        JOB DESCRIPTION:
-        {job_result.output}
-        """
+JOB DESCRIPTION:
+{job_result.output}
+"""
 
-       # 5️⃣ Run Match Agent (qualitative)
-    match_result = await match_agent.run(combined_input)
+        # 5️⃣ Run Match Agent (qualitative)
+        match_result = await match_agent.run(combined_input)
 
-# 6️⃣ Deterministic score
-    score = calculate_score(resume_content, job_text)
+        # 6️⃣ Deterministic score
+        score = calculate_score(resume_content, job_text)
 
-    analysis = json.loads(match_result.output)
-    analysis["match_score"] = score
+        analysis = json.loads(match_result.output)
+        analysis["match_score"] = score
 
-    return {
-    "resume": resume_result.output,
-    "job": job_result.output,
-    "analysis": analysis,   # ✅ return JSON object, NOT string
+        return {
+            "resume": resume_result.output,
+            "job": job_result.output,
+            "analysis": analysis,  # ✅ JSON object, not string
         }
+
+    except Exception as e:
+        logging.error(f"Analysis failed: {e}")
+        return {"error": "Analysis failed. Please try again."}
