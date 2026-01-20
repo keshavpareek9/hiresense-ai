@@ -1,11 +1,4 @@
-from pydantic import BaseModel
 from pydantic_ai import Agent
-
-class MatchResult(BaseModel):
-    match_score: int
-    strengths: list[str]
-    gaps: list[str]
-    improvement_suggestions: list[str]
 
 match_agent = Agent(
     model="openrouter:mistralai/mistral-7b-instruct",
@@ -18,14 +11,12 @@ STRICT RULES:
 - No explanations
 - No extra text
 
-Follow this exact schema:
+Return JSON in this exact format:
 
 {
-  "match_score": number (0-100),
   "strengths": string[],
   "gaps": string[],
   "improvement_suggestions": string[]
 }
-""",
-    result_type=MatchResult
+"""
 )
