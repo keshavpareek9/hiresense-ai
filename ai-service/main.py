@@ -159,11 +159,6 @@ async def analyze(
     resume_text: str | None = Form(None),
     resume_file: UploadFile | None = File(None),
 ):
-    """
-    Analyze resume-job match.
-    Accepts either pasted resume text OR uploaded PDF.
-    """
-
     logging.info("Analyze request received")
 
     try:
@@ -171,7 +166,6 @@ async def analyze(
         if resume_file:
             if not resume_file.filename.endswith(".pdf"):
                 return {"error": "Only PDF resumes are supported"}
-
             resume_content = extract_text_from_pdf(resume_file.file)
 
         elif resume_text:
@@ -180,13 +174,13 @@ async def analyze(
         else:
             return {"error": "Provide either resume text or PDF resume"}
 
-        # 2️⃣ Run Resume Agent
+        # 2️⃣ Resume agent
         resume_result = await resume_agent.run(resume_content)
 
-        # 3️⃣ Run Job Agent
+        # 3️⃣ Job agent
         job_result = await job_agent.run(job_text)
 
-        # 4️⃣ Combine outputs for match agent
+        # 4️⃣ Combine input
         combined_input = f"""
 RESUME:
 {resume_result.output}
@@ -195,7 +189,7 @@ JOB DESCRIPTION:
 {job_result.output}
 """
 
-        # 5️⃣ Run Match Agent (qualitative)
+        # 5️⃣ Match agent (LLM)
         match_result = await match_agent.run(combined_input)
 
         # 6️⃣ Deterministic score
@@ -207,7 +201,7 @@ JOB DESCRIPTION:
         return {
             "resume": resume_result.output,
             "job": job_result.output,
-            "analysis": analysis,  # ✅ JSON object, not string
+            "analysis": analysis,  # ✅ JSON object
         }
 
     except Exception as e:
