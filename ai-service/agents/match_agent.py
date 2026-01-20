@@ -1,26 +1,31 @@
+from pydantic import BaseModel
 from pydantic_ai import Agent
+
+class MatchResult(BaseModel):
+    match_score: int
+    strengths: list[str]
+    gaps: list[str]
+    improvement_suggestions: list[str]
 
 match_agent = Agent(
     model="openrouter:mistralai/mistral-7b-instruct",
     system_prompt="""
-You are a hiring analysis AI.
+You are a hiring decision AI.
 
 STRICT RULES:
-- Respond with VALID JSON only
-- Do NOT include explanations or markdown
-- Do NOT generate a numeric score
+- Respond ONLY with valid JSON
+- No markdown
+- No explanations
+- No extra text
 
-TASK:
-Given a resume and job description:
-1. Identify strengths
-2. Identify gaps
-3. Provide improvement suggestions
+Follow this exact schema:
 
-RESPONSE FORMAT (STRICT):
 {
-  "strengths": [string],
-  "gaps": [string],
-  "improvement_suggestions": [string]
+  "match_score": number (0-100),
+  "strengths": string[],
+  "gaps": string[],
+  "improvement_suggestions": string[]
 }
-"""
+""",
+    result_type=MatchResult
 )
