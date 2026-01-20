@@ -47,15 +47,14 @@ export default function Home() {
 
       const data = await res.json();
 
-      const parsed = JSON.parse(data.analysis);
-
       setAnalysis({
-        match_score: parsed.match_score ?? 0,
-        strengths: parsed.strengths ?? [],
-        gaps: parsed.gaps ?? [],
-        improvement_suggestions:
-          parsed.improvement_suggestions ?? [],
-      });
+  match_score: data.analysis.match_score ?? 0,
+  strengths: data.analysis.strengths ?? [],
+  gaps: data.analysis.gaps ?? [],
+  improvement_suggestions:
+    data.analysis.improvement_suggestions ?? [],
+});
+
     } catch (err: any) {
       setError(err.message || "Something went wrong");
     } finally {
