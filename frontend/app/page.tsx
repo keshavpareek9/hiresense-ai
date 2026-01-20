@@ -46,30 +46,27 @@ export default function Home() {
         throw new Error("Backend error while analyzing resume");
       }
 
-      const data = await res.json();
+     const data = await res.json();
 
-      // 🔒 HARD GUARANTEE: analysis must exist
-      if (!data || !data.analysis) {
-        throw new Error("Invalid analysis response from server");
-      }
+if (!data || !data.analysis || typeof data.analysis !== "object") {
+  throw new Error("Invalid analysis response from server");
+}
 
-      setAnalysis({
-        match_score:
-          typeof data.analysis.match_score === "number"
-            ? data.analysis.match_score
-            : 0,
-        strengths: Array.isArray(data.analysis.strengths)
-          ? data.analysis.strengths
-          : [],
-        gaps: Array.isArray(data.analysis.gaps)
-          ? data.analysis.gaps
-          : [],
-        improvement_suggestions: Array.isArray(
-          data.analysis.improvement_suggestions
-        )
-          ? data.analysis.improvement_suggestions
-          : [],
-      });
+setAnalysis({
+  match_score: Number(data.analysis.match_score) || 0,
+  strengths: Array.isArray(data.analysis.strengths)
+    ? data.analysis.strengths
+    : [],
+  gaps: Array.isArray(data.analysis.gaps)
+    ? data.analysis.gaps
+    : [],
+  improvement_suggestions: Array.isArray(
+    data.analysis.improvement_suggestions
+  )
+    ? data.analysis.improvement_suggestions
+    : [],
+});
+
     } catch (err: any) {
       console.error(err);
       setError(
